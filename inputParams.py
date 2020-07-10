@@ -4,7 +4,7 @@
 # Author: Venkata Mukund Kashyap Yedunuthala
 
 
-
+# To import required packages from numpy library
 from numpy import array,zeros,arange
 
 # Initializing all required parameters

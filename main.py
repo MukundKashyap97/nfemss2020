@@ -5,10 +5,13 @@
 # This file consists of main solver, element routine, and material routine
 # User is expected to execute this file AFTER updating inputParams.py
 
+
+# importing required packages from python libraries
 import numpy as np 
 import time
 import matplotlib.pyplot as plt
 from datetime import datetime
+# importing parameters and functions from other files
 from inputParams import *
 from meshGenerator import a,b,rnodes,nelem
 from analytical_sol import analytical_solution
@@ -17,17 +20,17 @@ from convergenceStudy import convergenceStudy_elem,convergenceStudy_dt
 def mat_routine(strain,del_strain,prev_sigma_ov,time_scale,Q,timeStep,C):
     '''Function for material routine employed within element subroutine
     Input parameters:
-        strain:         strain values updated in the element routine
-        del_strain:     differentiated strain values, also updated in the element routine
-        prev_sigma_ov:  overstress values of the previous timestep
-        time_scale:     characteristic time scale value, updated in inputParams.py
-        Q:              modulus defined in inputParams.py
-        timeStep:       increment in time in seconds
-        C:              material matrix for a plain-strain element, updated in inputParams.py
+        strain          : strain values updated in the element routine
+        del_strain      : differentiated strain values, also updated in the element routine
+        prev_sigma_ov   : overstress values of the previous timestep
+        time_scale      : characteristic time scale value, updated in inputParams.py
+        Q               : modulus defined in inputParams.py
+        timeStep        : increment in time in seconds
+        C               : material matrix for a plain-strain element, updated in inputParams.py
     Output parameters:
-        sigma:          updated stress values
-        sigma_ov:       updated overstress values
-        Ct:             material tangent matrix'''
+        sigma           : updated stress values
+        sigma_ov        : updated overstress values
+        Ct              : material tangent matrix'''
     dt = timeStep
     T = time_scale
     # the deviator of strain rate is calculated
@@ -44,24 +47,24 @@ def mat_routine(strain,del_strain,prev_sigma_ov,time_scale,Q,timeStep,C):
 def element_routine(rnodes,global_u,del_u,xi,T,Q,sigma_ov,timeStep,time_scale,C):
     ''' Function that describes the element subroutine that is employed for each element at every timestep
     Input parameters:
-        rnodes:     the nodes at which element routine is performed
-        global_u:   the global displacements corresponding to the element under consideration
-        del_u:      the displacement increments
-        xi:         value of gauss point according to quadrature scheme
-        T:          value of time at that particular timestep
-        Q:          modulus value as defined in inputParams.py
-        sigma_ov:   overstress values
-        timeStep:   time increment value
-        time_scale: characteristic time scale as defined in inputParams.py
-        C:          material law for plain strain element
+        rnodes      : the nodes at which element routine is performed
+        global_u    : the global displacements corresponding to the element under consideration
+        del_u       : the displacement increments from the previous iteration
+        xi          : value of gauss point according to quadrature scheme
+        T           : value of time at that particular timestep
+        Q           : modulus value as defined in inputParams.py
+        sigma_ov    : overstress values (of the previous timestep)
+        timeStep    : time increment value
+        time_scale  : characteristic time scale as defined in inputParams.py
+        C           : material law for plain strain element
     Output parameters:
-        elem_K:     element stiffness matrix
-        elem_F:     nodal forces
-        sigma:      updated stresses
-        sigma_ov:   updated overstresses'''
+        elem_K      : element stiffness matrix
+        elem_F      : nodal forces
+        sigma       : updated stresses
+        sigma_ov    : updated overstresses'''
     r1 = rnodes[0]
     r2 = rnodes[1]
-    elem_u = global_u
+    elem_u = global_u # assigning values to local variables for ease
     # the overstress value of previous timestep is stored to use in EM scheme
     prev_sigma_ov = sigma_ov
     # the jacobian for this case is calculated
@@ -79,18 +82,21 @@ def element_routine(rnodes,global_u,del_u,xi,T,Q,sigma_ov,timeStep,time_scale,C)
     # calculating element stiffness matrix, and nodal forces
     elem_F = 2*np.matmul(B_t,sigma)*np.matmul(np.transpose(N),rnodes)*Jacobian
     elem_K = 2*np.matmul(B_t,np.matmul(Ct,B))*np.matmul(N,rnodes)*Jacobian
+    # return statement for the values
     return elem_K, elem_F, sigma, sigma_ov
 
-# program begins here, with allocation of space for some required variables
+# main program begins here, with allocation of space for some required variables
 sigma_ov = zeros((2,1))
 sigma = zeros((2,1))
 global_u = zeros((nelem+1,1))
 placeholder_del_u = zeros((nelem+1,1))
-placeholder_sigma_ov = zeros((2,1))
-disp_evolution_first = []
-disp_evolution_last = []
-## solver part
-start_time =time.time()
+placeholder_sigma_ov = zeros((2,1)) # allocating space and initializing to zero, required in first iteration
+disp_evolution_last = [] # list to contain time history of displacements
+
+
+## SOLVER
+# =========
+start_time = time.time() # making note of time at start to calculate total time taken by solver
 ## time loop
 for T in TIME_SPAN:
     # load scaling
@@ -103,25 +109,24 @@ for T in TIME_SPAN:
     # newton-raphson loop
     while it <= MAX_ITERATIONS:
         # allocating space and initializing to zero at each iteration
-        elem_K = np.zeros(2)
-        elem_F = np.zeros((2,1))
-        global_K = np.zeros((nelem+1,nelem+1))
-        global_int_F = np.zeros((nelem+1,1))
-        global_ext_F = np.zeros((nelem+1,1))
-        del_u = np.zeros((nelem+1,1))
-        global_ext_F[0] = P
-        sigma_evolution = []
+        elem_K = np.zeros(2) # element stiffness matrix
+        elem_F = np.zeros((2,1)) # nodal forces
+        global_K = np.zeros((nelem+1,nelem+1)) # global stiffness matrix
+        global_int_F = np.zeros((nelem+1,1)) # global internal forces
+        global_ext_F = np.zeros((nelem+1,1)) # global external forces
+        del_u = np.zeros((nelem+1,1)) # increment in displacement
+        global_ext_F[0] = P # assigning value to global external forces
+        sigma_evolution = [] # list to store values of stress at each time step
         # element routine loop and assembly of elemental matrices
         for k in range(nelem):
             elem_K, elem_F, sigma, sigma_ov = element_routine(rnodes[k:k+2],global_u[k:k+2],placeholder_del_u[k:k+2],GAUSS_POINT,T,Q,placeholder_sigma_ov,TIME_STEP,TIME_SCALE,C)
             sigma_evolution.append(sigma)
-            global_K[k:k+2,k:k+2]=global_K[k:k+2,k:k+2]+elem_K
-            global_int_F[k:k+2]=global_int_F[k:k+2]+elem_F
+            global_K[k:k+2,k:k+2] = global_K[k:k+2,k:k+2] + elem_K
+            global_int_F[k:k+2] = global_int_F[k:k+2] + elem_F
         # solving non-linear equation for displacement increment
         del_u = np.linalg.solve(global_K,(global_ext_F-global_int_F))
-        # del_u = np.matmul(np.linalg.inv(global_K),(global_ext_F-global_int_F))
         # updating displacements
-        global_u=global_u+del_u
+        global_u = global_u + del_u
         placeholder_del_u = del_u[:]
         # calculation of residual forces
         R = global_int_F - global_ext_F
@@ -130,17 +135,20 @@ for T in TIME_SPAN:
             break
         else:
             it+=1
-    disp_evolution_first.append(global_u[0])
-    disp_evolution_last.append(global_u[-1])
-    placeholder_sigma_ov = sigma_ov
-end_time =time.time()
-sigma_evolution = np.array(sigma_evolution)
+    disp_evolution_last.append(global_u[-1]) # for time history 
+    placeholder_sigma_ov = sigma_ov # to carry forward to next time step
+end_time =time.time() # time at the end of execution of solver
+sigma_evolution = np.array(sigma_evolution) # converting list to a NumPy array for ease
 
 # CONVERGENCE STUDY
 # Uncomment the following lines to perform convergence study
 # Generates plots that are saved directly to the current directory
+# REMOVE ANY .JSON FILES PRESENT FROM PRIOR STUDY BEFORE EXECUTING
 # =====
+# for convergence study with respect to number of elements while keeping timestep constant, uncomment below line
 # convergenceStudy_elem(nelem,rnodes,global_u)
+
+# for convergence study with respect to time step keeping number of elements constant, uncomment below line
 # convergenceStudy_dt(TIME_STEP,rnodes,global_u)
 # =====
 
@@ -189,6 +197,8 @@ ax3.legend()
 plt.figtext(0.01,0.01,"Plot generated on "+str(datetime.today()),fontsize='small')
 fig.savefig("./comparison.png",dpi=600,metadata={'Author':"Venkata Mukund Kashyap Yedunuthala"})
 
+
+# # plot for the time history of displacement 
 fig,ax4 = plt.subplots()
 ax4.plot(TIME_SPAN,disp_evolution_last,label='Displacement')
 ax4.set(

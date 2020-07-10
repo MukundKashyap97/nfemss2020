@@ -5,6 +5,16 @@ from datetime import datetime
 from numpy import transpose,array
 
 def convergenceStudy_elem(nelem,rnodes,global_u):
+    """Function to generate json files required for convergence study
+    with respect to number of elements 
+    This function is called in main file. 
+    Input parameters:
+        nelem       : number of elements
+        rnodes      : coordinates of nodes
+        global_u    : global displacements at nodes
+    Output parameters:
+    Returns None, generates json file consisting of displacements
+    depending upon the number of elements. """
 
     study_u_nelem = {}
     study_u_nelem[nelem] = [rnodes.tolist(),transpose(global_u).tolist()]
@@ -19,6 +29,16 @@ def convergenceStudy_elem(nelem,rnodes,global_u):
             json.dump([study_u_nelem,],outfile,indent=4)
     
 def convergenceStudy_dt(TIME_STEP,rnodes,global_u):
+    """Function to generate json files required for convergence study
+    with variation in time step. 
+    This function is called in main file. 
+    Input parameters:
+        TIME_STEP   : increment in time
+        rnodes      : coordinates of nodes
+        global_u    : global displacements at nodes
+    Output parameters:
+    Returns None, generates json file consisting of displacements
+    depending upon the increment in time. """
     study_u_dt = {}
     study_u_dt[TIME_STEP] = [rnodes.tolist(),transpose(global_u).tolist()]
     try:
@@ -32,6 +52,12 @@ def convergenceStudy_dt(TIME_STEP,rnodes,global_u):
             json.dump([study_u_dt,],outfile,indent=4)
 
 def convergenceStudy_elem_publish():
+    """ Function to generate plot of convergence study
+    with respect to number of elements. 
+    REQUIRES JSON FILES TO BE PRESENT AS GENERATED USING ABOVE FUNCTIONS
+    ---
+    Execution in this file, see below.
+    Generates convergenceStudy_u_nelem.png file """
     with open("convergenceStudy_nelem.json","r") as f:
         data = json.load(f)
     fig,ax1 = plt.subplots()
@@ -48,6 +74,12 @@ def convergenceStudy_elem_publish():
     fig.savefig("./convergenceStudy_u_nelem.png",dpi=600,metadata={'Author':"Venkata Mukund Kashyap Yedunuthala"})
 
 def convergenceStudy_dt_publish():
+    """ Function to generate plot of convergence study
+    with respect to increment in time. 
+    REQUIRES JSON FILES TO BE PRESENT AS GENERATED USING ABOVE FUNCTIONS
+    ---
+    Execution in this file, see below.
+    Generates convergenceStudy_u_dt.png file """
     with open("convergenceStudy_dt.json","r") as f:
         data = json.load(f)
     fig,ax2 = plt.subplots()
